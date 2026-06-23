@@ -261,19 +261,68 @@ async fn read(
 The `read()` method can be used both for constructing decision models in a domain layer, and for projecting events into
 materialized views in CQRS. An optional [`DcbQuery`](#query) can be provided to select by tags and types.
 
+Please note, the `subscribe=true` argument is deprecated, this parameter will be removed in a future version:
+use the [`subscribe()`](#subscribing) method instead.
+
 ### Parameters
 
-| Name        | Type               | Description                                                                                                                                                  |
-|-------------|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `query`     | `Option<DcbQuery>` | Optional structured query to filter events (by tags, event types, etc).                                                                                      |
-| `start`     | `Option<u64>`      | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `true`.  |
-| `backwards` | `bool`             | If `true` events will be read backwards, either from the given position or from the last recorded event.                                                     |
-| `limit`     | `Option<u32>`      | Optional cap on the number of events to retrieve.                                                                                                            |
-| `subscribe` | `bool`             | If `true`, keeps the stream open to deliver future events as they arrive.                                                                                    |
+| Name        | Type               | Description                                                                                                                                                                   |
+|-------------|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `query`     | `Option<DcbQuery>` | Optional structured query to filter events (by tags, event types, etc).                                                                                                       |
+| `start`     | `Option<u64>`      | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `true`.                   |
+| `backwards` | `bool`             | If `true` events will be read backwards, either from the given position or from the last recorded event.                                                                      |
+| `limit`     | `Option<u32>`      | Optional cap on the number of events to retrieve.                                                                                                                             |
+| `subscribe` | `bool`             | If `true` [**deprecated**], keeps the stream open to deliver future events as they arrive.                                                                                    |
+
 
 ### Return Value
 
-Returns a "read response" instance from which [`DcbSequencedEvent`](#sequenced-event) instances, and the most relevant "last known" sequence number, can be obtained.
+Returns a "read response" instance from which [`DcbSequencedEvent`](#sequenced-event) instances, and the most relevant "last known" sequence number, can be obtained. The "last known" sequence number can be obtained by calling the `head()` method on the response object.
+
+If `subscribe` was `true`, the "last known" sequence number returned by the response's `head()` method will be `None`.
+
+Otherwise, if `limit` was a `Some<u32>`, the value returned by the response's `head()` method will be the sequence position
+of the last event received from the server.
+
+Otherwise, the value returned by the response's `head()` method will be the position of the last recorded event in the database when the reader transaction started.
+
+## Subscribing
+
+The `subscribe()` method returns recorded events from an UmaDB server, and delivers new events as they arrive.
+
+::: tabs
+== sync
+```rust
+fn subscribe(
+    &self,
+    query: Option<DcbQuery>,
+    after: Option<u64>,
+) -> DcbResult<Box<dyn DcbSubscriptionSync + Send + 'static>>
+```
+== async
+```rust
+async fn subscribe(
+    &self,
+    query: Option<DcbQuery>,
+    after: Option<u64>,
+) -> DcbResult<Box<dyn DcbSubscriptionAsync + Send + 'static>>
+```
+:::
+
+The `subscribe()` method can be used for projecting events into materialized views in CQRS. An optional
+[`DcbQuery`](#query) can be provided to select by tags and types.
+
+### Parameters
+
+| Name        | Type                    | Description                                                                                       |
+|-------------|-------------------------|---------------------------------------------------------------------------------------------------|
+| `query`     | `Option<DcbQuery>`      | Optional structured query to filter events (by tags, event types, etc).                           |
+| `after`     | `Option<u64>`           | Receive events *after* this sequence number. Only events with greater positions will be received. |
+
+
+### Return Value
+
+Returns a "subscription" instance from which [`DcbSequencedEvent`](#sequenced-event) instances can be obtained.
 
 
 ## Getting Head Position

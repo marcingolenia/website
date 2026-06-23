@@ -22,12 +22,13 @@ The sections below detail the `umadb.v1.DCB` service defined in
 
 UmaDB's gRPC service for reading and appending events exposes four RPC methods:
 
-| Name              | Request                                | Response                                         | Description                                                                                                                            |
-|-------------------|----------------------------------------|--------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `Append`          | [`AppendRequest`](#append-request)     | [`AppendResponse`](#append-response)             | Appends new events atomically, with optional append condition, and optional tracking information.                                      |
-| `Read`            | [`ReadRequest`](#read-request)         | **stream**&nbsp;[`ReadResponse`](#read-response) | Streams stored events from the server to the client, optionally as a subscription.                                                     |
-| `Head`            | [`HeadRequest`](#head-request)         | [`HeadResponse`](#head-response)                 | Returns the position of the last event in the database; used to measure the volume of stored events.                                   |
-| `GetTrackingInfo` | [`TrackingRequest`](#tracking-request) | [`TrackingResponse`](#tracking-response)         | Returns the last recorded position in an upstream sequence of events; used when starting or resuming event processing components. |
+| Name              | Request                                | Response                                                | Description                                                                                                                       |
+|-------------------|----------------------------------------|---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| `Append`          | [`AppendRequest`](#append-request)     | [`AppendResponse`](#append-response)                    | Appends new events atomically, with optional append condition, and optional tracking information.                                 |
+| `Read`            | [`ReadRequest`](#read-request)         | **stream**&nbsp;[`ReadResponse`](#read-response)        | Streams already-recorded events from the server to the client.                                                                    |
+| `Subscribe`       | [`SubscribeRequest`](#stream-request)  | **stream**&nbsp;[`SubscribeResponse`](#stream-response) | Streams already-recorded and subsequently-recorded events from the server to the client.                                          |
+| `Head`            | [`HeadRequest`](#head-request)         | [`HeadResponse`](#head-response)                        | Returns the position of the last event in the database; used to measure the volume of stored events.                              |
+| `GetTrackingInfo` | [`TrackingRequest`](#tracking-request) | [`TrackingResponse`](#tracking-response)                | Returns the last recorded position in an upstream sequence of events; used when starting or resuming event processing components. |
 
 
 ## Append Request
@@ -71,18 +72,19 @@ Send a `ReadRequest` to the [`Read`](#dcb-service) RPC to read events from the e
 Set `query` to select only specific events. Set `start` to read only from a specific position. If `start` is not set,
 events will be read from the first recorded event, or the last if `backwards` is `true`.
 
-| Field        | Type                                | Description                                                           |
-|--------------|-------------------------------------|-----------------------------------------------------------------------|
-| `query`      | **optional**&nbsp;[`Query`](#query) | Optional filter for selecting specific event types or tags.           |
-| `start`      | **optional**&nbsp;`uint64`          | Read from this sequence number.                                       |
-| `backwards`  | **optional**&nbsp;`bool`            | Start reading backwards (default `false`).                            |
-| `limit`      | **optional**&nbsp;`uint32`          | Maximum number of events to return (default unlimited).               |
-| `subscribe`  | **optional**&nbsp;`bool`            | If true, the stream remains open and continues delivering new events. |
-| `batch_size` | **optional**&nbsp;`uint32`          | Optional batch size hint for streaming responses.                     |
+| Field        | Type                                      | Description                                                                          |
+|--------------|-------------------------------------------|--------------------------------------------------------------------------------------|
+| `query`      | **optional**&nbsp;[`Query`](#query)       | Optional filter for selecting specific event types or tags.                          |
+| `start`      | **optional**&nbsp;`uint64`                | Read from this sequence number.                                                      |
+| `backwards`  | **optional**&nbsp;`bool`                  | Start reading backwards (default `false`).                                           |
+| `limit`      | **optional**&nbsp;`uint32`                | Maximum number of events to return (default unlimited).                              |
+| `subscribe`  | [**deprecated**] **optional**&nbsp;`bool` | If true, the stream remains open and continues delivering new events. |
+| `batch_size` | **optional**&nbsp;`uint32`                | Optional batch size hint for streaming responses.                                    |
 
 The server will return a stream of [`ReadResponse`](#read-response) messages. The default value of `subscribe` is
 `false`, meaning the stream will end when all selected events have been received. When `subscribe` is `true`, the stream
-will continue as new events are appended to the store.
+will continue as new events are appended to the store. Please note, the `subscribe` field is deprecated and will be removed in a
+future version: use the [`Subscribe`](#dcb-service) RPC instead.
 
 
 ## Read Response
@@ -96,13 +98,39 @@ A collection of [`SequencedEvent`](#sequenced-event) messages can be obtained fr
 | `events` | **repeated**&nbsp;[`SequencedEvent`](#sequenced-event) | A batch of events matching the [`ReadRequest.query`](#read-request). |
 | `head`   | **optional**&nbsp;`uint64`                             | The position of the last recorded event.                             |
 
-When [`ReadRequest.subscribe`](#read-request) was `false` and [`ReadRequest.limit`](#read-request) was `None`,
-the value of  `head` will be the position of the last recorded event in the database during the reader transaction.
-
-Otherwise, if [`ReadRequest.subscribe`](#read-request) was `true`, the value of `head` will be empty.
+If [`ReadRequest.subscribe`](#read-request) was `true`, the value of `head` will be empty.
 
 Otherwise, if [`ReadRequest.limit`](#read-request) was a `uint64`, the value of `head` will be the position
 of the last event in the message's `events` field.
+
+Otherwise, the value of  `head` will be the position of the last recorded event in the database during the reader transaction.
+
+## Subscribe Request
+
+Send a `SubscribeRequest` to the [`Subscribe`](#dcb-service) RPC to subscribe to events already-recorded and subsequently-recorded in the event store.
+
+Set `query` to select only specific events. Set `after` to read only after a specific position. If `after` is not set,
+events will be read from the first recorded event.
+
+| Field        | Type                                | Description                                                           |
+|--------------|-------------------------------------|-----------------------------------------------------------------------|
+| `query`      | **optional**&nbsp;[`Query`](#query) | Optional filter for selecting specific event types or tags.           |
+| `after`      | **optional**&nbsp;`uint64`          | Subscribe after this sequence number.                                 |
+| `batch_size` | **optional**&nbsp;`uint32`          | Optional batch size hint for streaming responses.                     |
+
+The server will return a stream of [`SubscribeResponse`](#subscribe-response) messages. The stream
+will continue as new events are appended to the store.
+
+
+## Subscribe Response
+
+A stream of `SubscribeResponse` messages are sent in response to each [`SubscribeRequest`](#subscribe-request).
+A collection of [`SequencedEvent`](#sequenced-event) messages can be obtained from the `events` field.
+
+
+| Field    | Type                                                   | Description                                                                    |
+|----------|--------------------------------------------------------|--------------------------------------------------------------------------------|
+| `events` | **repeated**&nbsp;[`SequencedEvent`](#sequenced-event) | A batch of events matching the [`SubscribeRequest.query`](#subscribe-request). |
 
 
 ## Head Request

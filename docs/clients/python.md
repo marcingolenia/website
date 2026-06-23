@@ -210,6 +210,10 @@ def read(
 The `Client.read()` method can be used both for constructing decision models in a domain layer, and for projecting events into
 materialized views in CQRS. An optional `Query` can be provided to select by tags and types.
 
+Please note, the `subscribe=true` argument is deprecated, this parameter will be removed in a future version:
+use the [`subscribe()`](#subscribing) method instead.
+
+
 ### Parameters
 
 | Name        | Type          | Description                                                                                                                                                 |
@@ -218,11 +222,20 @@ materialized views in CQRS. An optional `Query` can be provided to select by tag
 | `start`     | `int\|None`   | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `True`. |
 | `backwards` | `bool`        | If `True` events will be read backwards, either from the given position or from the last recorded event.                                                    |
 | `limit`     | `int\|None`   | Optional cap on the number of events to retrieve.                                                                                                           |
-| `subscribe` | `bool`        | If `True`, keeps the stream open to deliver future events as they arrive.                                                                                   |
+| `subscribe` | `bool`        | If `True` [**deprecated**], keeps the stream open to deliver future events as they arrive.                                                                  |
+
 
 ### Return Value
 
-Returns an iterable "read response" instance from which `SequencedEvent` instances, and the most relevant "last known" sequence number, can be obtained.
+Returns an iterable "read response" instance from which `SequencedEvent` instances, and the most relevant "last known" sequence number, can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
+
+If `subscribe` was `True`, the "last known" sequence number returned by the response's `head()` method will be `None`.
+
+Otherwise, if `limit` was a `int`, the value returned by the response's `head()` method will be the sequence position
+of the last event received from the server.
+
+Otherwise, the value returned by the response's `head()` method will be the position of the last recorded event in the database when the reader transaction started.
+
 
 ### Example
 
@@ -235,16 +248,52 @@ client = Client("http://localhost:50051")
 q = Query(items=[QueryItem(types=["example"], tags=["tag1", "tag2"])])
 
 resp = client.read(
-    query=q, start=None, backwards=False, limit=None, subscribe=False
+    query=q, start=None, backwards=False, limit=None
 )
 for item in resp:
     print(f"Got event at position {item.position}: {item.event}")
 
 last_known = resp.head()
 print("Last known position:", last_known)
+```
 
-# Subscribe to new events
-subscription = client.read(subscribe=True)
+## Subscribing
+
+The `Client.subscribe()` method returns recorded events from an UmaDB server, and delivers new events as they arrive.
+
+```python
+def subscribe(
+    query: Query | None = None,
+    after: int | None = None,
+) -> Subscription:
+    ...
+```
+The `Client.subscription()` method can be used for projecting events into
+materialized views in CQRS. An optional `Query` can be provided to select by tags and types.
+
+### Parameters
+
+| Name        | Type          | Description                                                                                              |
+|-------------|---------------|----------------------------------------------------------------------------------------------------------|
+| `query`     | `Query\|None` | Optional structured query to filter events (by tags, event types, etc).                                  |
+| `after`     | `int\|None`   | Receive events *after* this sequence number. Only events with greater positions will be received.        |
+
+### Return Value
+
+Returns an iterable "subscription" instance from which `SequencedEvent` instances can be obtained.
+
+### Example
+
+```python
+from umadb import Client, Query, QueryItem
+
+client = Client("http://localhost:50051")
+
+# Filter by type(s) and tag(s)
+q = Query(items=[QueryItem(types=["example"], tags=["tag1", "tag2"])])
+
+# Subscribe to selected events
+subscription = client.subscribe(query=q, after=None)
 for se in subscription:
     print("New event:", se.position, se.event)
     # Break for demo purposes
