@@ -120,18 +120,18 @@ def append(
     ...
 ```
 
-The `Client.append()` method can be used to append new `Event` instances to UmaDB atomically, with an optional append
+The `Client.append()` method can be used to append new [`Event`](#event) instances to UmaDB atomically, with an optional append
 condition, and optional tracking information. Events are written in order.
 
 Conditional appends with event UUIDs are idempotent. The server does not enforce uniqueness of events IDs.
 
 ### Parameters
 
-| Name            | Type                    | Description                                                                        |
-|-----------------|-------------------------|------------------------------------------------------------------------------------|
-| `events`        | `list[Event]`           | The list of events to append. Each includes an event type, tags, and data payload. |
-| `condition`     | `AppendCondition\|None` | Optional append condition to ensure no conflicting writes occur.                   |
-| `tracking_info` | `TrackingInfo\|None`    | Optional tracking information – for event-processing components only.              |
+| Name            | Type                              | Description                                                                        |
+|-----------------|-----------------------------------|------------------------------------------------------------------------------------|
+| `events`        | `list[`[`Event`](#event)`]`       | The list of events to append. Each includes an event type, tags, and data payload. |
+| `condition`     | [`AppendCondition`](#append-condition)`\|None` | Optional append condition to ensure no conflicting writes occur.                   |
+| `tracking_info` | [`TrackingInfo`](#tracking-info)`\|None`    | Optional tracking information – for event-processing components only.              |
 
 ### Return Value
 
@@ -209,22 +209,22 @@ def read(
     ...
 ```
 The `Client.read()` method can be used both for constructing decision models in a domain layer, and for projecting events into
-materialized views in CQRS. An optional `Query` can be provided to select by tags and types.
+materialized views in CQRS. An optional [`Query`](#query) can be provided to select by tags and types.
 
 
 ### Parameters
 
-| Name        | Type          | Description                                                                                                                                                 |
-|-------------|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `query`     | `Query\|None` | Optional structured query to filter events (by tags, event types, etc).                                                                                     |
-| `start`     | `int\|None`   | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `True`. |
-| `backwards` | `bool`        | If `True` events will be read backwards, either from the given position or from the last recorded event.                                                    |
-| `limit`     | `int\|None`   | Optional cap on the number of events to retrieve.                                                                                                           |
+| Name        | Type                     | Description                                                                                                                                                 |
+|-------------|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `query`     | [`Query`](#query)`\|None` | Optional structured query to filter events (by tags, event types, etc).                                                                                     |
+| `start`     | `int\|None`              | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `True`. |
+| `backwards` | `bool`                   | If `True` events will be read backwards, either from the given position or from the last recorded event.                                                    |
+| `limit`     | `int\|None`              | Optional cap on the number of events to retrieve.                                                                                                           |
 
 
 ### Return Value
 
-Returns an iterable "read response" instance from which `SequencedEvent` instances, and the most relevant "last known" sequence number, can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
+Returns an iterable "read response" instance from which [`SequencedEvent`](#sequenced-event) instances, and the most relevant "last known" sequence number, can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
 
 if `limit` was a `int`, the value returned by the response's `head()` method will be the sequence position
 of the last event received from the server.
@@ -265,18 +265,18 @@ def subscribe(
     ...
 ```
 The `Client.subscription()` method can be used for projecting events into
-materialized views in CQRS. An optional `Query` can be provided to select by tags and types.
+materialized views in CQRS. An optional [`Query`](#query) can be provided to select by tags and types.
 
 ### Parameters
 
-| Name        | Type          | Description                                                                                              |
-|-------------|---------------|----------------------------------------------------------------------------------------------------------|
-| `query`     | `Query\|None` | Optional structured query to filter events (by tags, event types, etc).                                  |
-| `after`     | `int\|None`   | Receive events *after* this sequence number. Only events with greater positions will be received.        |
+| Name        | Type                     | Description                                                                                              |
+|-------------|--------------------------|----------------------------------------------------------------------------------------------------------|
+| `query`     | [`Query`](#query)`\|None` | Optional structured query to filter events (by tags, event types, etc).                                  |
+| `after`     | `int\|None`              | Receive events *after* this sequence number. Only events with greater positions will be received.        |
 
 ### Return Value
 
-Returns an iterable "subscription" instance from which `SequencedEvent` instances can be obtained.
+Returns an iterable "subscription" instance from which [`SequencedEvent`](#sequenced-event) instances can be obtained.
 
 ### Example
 
@@ -322,8 +322,8 @@ def get_tracking_info(self, source: str) -> int | None: ...
 
 The `Client.get_tracking_info()` method can be used when starting or resuming an
 event-processing component. The event-processing component will start by requesting new events from the upstream
-sequence after this position. The position of an upstream event that has been processed successfully can be recorded
-atomically when appending new events generated by processing that event.
+sequence after this position. The position of an upstream event that has been processed successfully can be [recorded
+atomically](#appending-events) when appending new events generated by processing that event.
 
 ### Parameters
 
@@ -352,30 +352,30 @@ storing provenance information, correlation IDs, causation IDs, or other context
 preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
 
 Include in:
-* Append requests when writing new events to the store.
+* [Append requests](#appending-events) when writing new events to the store.
 
 Included in:
-* `SequencedEvent` objects when the server responds to read requests.
+* [`SequencedEvent`](#sequenced-event) objects when the server responds to read requests.
 
 Matched by:
-* `QueryItem` during `read()` and `append()` operations.
+* [`QueryItem`](#query-item) during [`read()`](#reading-events) and [`append()`](#appending-events) operations.
 
 
 ## Append Condition
 
-An `AppendCondition` causes an append request to fail if events match its `Query`, optionally after
+An `AppendCondition` causes an append request to fail if events match its [`Query`](#query), optionally after
 a sequence number.
 
-| Field                  | Type        | Description                   |
-|------------------------|-------------|-------------------------------|
-| `fail_if_events_match` | `Query`     | Query for conflicting events. |
-| `after`                | `int\|None` | Sequence number.              |
+| Field                  | Type                  | Description                   |
+|------------------------|-----------------------|-------------------------------|
+| `fail_if_events_match` | [`Query`](#query)     | Query for conflicting events. |
+| `after`                | `int\|None`           | Sequence number.              |
 
 Include in:
-* Append requests to define optimistic concurrent control.
+* [Append requests](#appending-events) to define optimistic concurrent control.
 
-To implement a consistency boundary, command handlers can use the same `Query` used when
-reading events as the value of `fail_if_events_match`, and the "head" sequence
+To implement a consistency boundary, command handlers can use the same [`Query`](#query) used when
+[reading events](#reading-events) as the value of `fail_if_events_match`, and the "head" sequence
 number received from the read response as the value of `after`.
 
 
@@ -389,11 +389,11 @@ A `TrackingInfo` instance indicates the source and position of an upstream event
 | `position` | `int` | Upstream sequence number. |
 
 Include in:
-* Append requests when recording the results of processing an upstream event.
+* [Append requests](#appending-events) when recording the results of processing an upstream event.
 
 To implement exactly-once semantics in event-processing components, pull events from an upstream
-source after the last recorded position, then record the upstream positions
-of upstream events along with new state that results from processing those events.
+source after the [last recorded position](#getting-tracking-info), then record the upstream positions
+of upstream events along with [new state](#appending-events) that results from processing those events.
 By processing event sequentially in this way, each event will be processed at least once. And by
 recording tracking information along with new state, the new state will be recorded at most once.
 The combination of "at least once" processing and "at most once" recording gives "exactly once"
@@ -404,15 +404,15 @@ semantics from the point of view of consumers of the recorded state.
 
 A `Query` defines criteria for selecting events in the event store.
 
-| Field   | Type              | Description                                |
-|---------|-------------------|--------------------------------------------|
-| `items` | `list[QueryItem]` | A list of selection criteria (logical OR). |
+| Field   | Type                            | Description                                |
+|---------|---------------------------------|--------------------------------------------|
+| `items` | `list[`[`QueryItem`](#query-item)`]` | A list of selection criteria (logical OR). |
 
-An `Event` is selected if any `QueryItem` matches or the `items` field is empty.
+An [`Event`](#event) is selected if any [`QueryItem`](#query-item) matches or the `items` field is empty.
 
 Include in:
-* Read requests to select events returned by the server.
-* An `AppendCondition` to select conflicting events.
+* [Read requests](#reading-events) to select events returned by the server.
+* An [`AppendCondition`](#append-condition) to select conflicting events.
 
 
 ## Query Item
@@ -424,22 +424,22 @@ A `QueryItem` defines a criterion for matching events.
 | `types` | `list[str]` | List of event types (logical OR). |
 | `tags`  | `list[str]` | List of tags (logical AND).       |
 
-A `QueryItem` will match an `Event` if:
-* one of its `types` matches the `Event.event_type` or its `types` field is empty; AND
-* all of its `tags` match one of the `Event.tags` or its `tags` field is empty.
+A `QueryItem` will match an [`Event`](#event) if:
+* one of its `types` matches the [`Event.event_type`](#event) or its `types` field is empty; AND
+* all of its `tags` match one of the [`Event.tags`](#event) or its `tags` field is empty.
 
 
 ## Sequenced Event
 
-A `SequencedEvent` represents a recorded `Event` along with its assigned sequence number.
+A `SequencedEvent` represents a recorded [`Event`](#event) along with its assigned sequence number.
 
-| Field      | Type    | Description          |
-|------------|---------|----------------------|
-| `position` | `int`   | The sequence number. |
-| `event`    | `Event` | The recorded event.  |
+| Field      | Type              | Description          |
+|------------|-------------------|----------------------|
+| `position` | `int`             | The sequence number. |
+| `event`    | [`Event`](#event) | The recorded event.  |
 
 Included in:
-* Read responses when the server responds to read requests.
+* [Read responses](#reading-events) when the server responds to read requests.
 
 
 ## Error Handling
