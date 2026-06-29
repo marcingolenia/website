@@ -158,12 +158,13 @@ for r in read_resp:
 last_known = read_resp.head()
 print("Last known position:", last_known)
 
-# Produce a new event with a UUID (for idempotent retries)
+# Produce a new event with a UUID (for idempotent retries) and metadata
 ev = Event(
     event_type="example",
     tags=["tag1", "tag2"],
     data=b"Hello, world!",
     uuid=str(uuid.uuid4()),
+    metadata={"source": "example", "correlation_id": str(uuid.uuid4())},
 )
 
 # Append with an optimistic condition: fail if conflicting events exist after last_known
@@ -171,7 +172,7 @@ cond = AppendCondition(fail_if_events_match=cb, after=last_known)
 position1 = client.append([ev], condition=cond)
 print("Appended at:", position1)
 
-# Conflicting append should raise an error (e.g. ValueError)
+# Conflicting append should raise an error
 try:
     client.append(
         [
@@ -180,6 +181,7 @@ try:
                 tags=["tag1", "tag2"],
                 data=b"Hello, world!",
                 uuid=str(uuid.uuid4()),
+                metadata={},
             )
         ],
         condition=cond,
@@ -335,14 +337,19 @@ Returns the last recorded upstream position (`int`), or `None` if the sequence n
 
 An `Event` represents a single event either to be appended or already stored in the event log.
 
-| Field        | Type        | Description                                                   |
-|--------------|-------------|---------------------------------------------------------------|
-| `event_type` | `str`       | The event’s logical type (e.g. `"UserRegistered"`).           |
-| `tags`       | `list<str>` | Tags assigned to the event (used for filtering and indexing). |
-| `data`       | `bytes`     | Binary payload associated with the event.                     |
-| `uuid`       | `str\|None` | Unique event ID.                                              |
+| Field        | Type              | Description                                                   |
+|--------------|-------------------|---------------------------------------------------------------|
+| `event_type` | `str`             | The event's logical type (e.g. `"UserRegistered"`).           |
+| `tags`       | `list[str]`       | Tags assigned to the event (used for filtering and indexing). |
+| `data`       | `bytes`           | Binary payload associated with the event.                     |
+| `uuid`       | `str\|None`       | Unique event ID.                                              |
+| `metadata`   | `dict[str, str]`  | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
 
 Idempotent support for append operations is activated by setting a UUID on appended events.
+
+The `metadata` field allows storing arbitrary string key-value pairs alongside events. This is useful for
+storing provenance information, correlation IDs, causation IDs, or other contextual data that should be
+preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
 
 Include in:
 * Append requests when writing new events to the store.
@@ -417,7 +424,7 @@ A `QueryItem` defines a criterion for matching events.
 | `types` | `list[str]` | List of event types (logical OR). |
 | `tags`  | `list[str]` | List of tags (logical AND).       |
 
-A `QueryItem` will match an `Event if:
+A `QueryItem` will match an `Event` if:
 * one of its `types` matches the `Event.event_type` or its `types` field is empty; AND
 * all of its `tags` match one of the `Event.tags` or its `tags` field is empty.
 
@@ -471,12 +478,13 @@ for result in read_response:
 last_known_position = read_response.head()
 print("Last known position is:", last_known_position)
 
-# Create an event with a UUID to enable idempotent append
+# Create an event with a UUID to enable idempotent append and metadata
 event = Event(
     event_type="example",
     tags=["tag1", "tag2"],
     data=b"Hello, world!",
     uuid=str(uuid.uuid4()),
+    metadata={"source": "example", "correlation_id": str(uuid.uuid4())},
 )
 
 # Append event within the consistency boundary
@@ -491,6 +499,7 @@ try:
         tags=["tag1", "tag2"],
         data=b"Hello, world!",
         uuid=str(uuid.uuid4()),  # different UUID
+        metadata={},
     )
     client.append([conflicting_event], condition=condition)
 except IntegrityError as e:
@@ -544,12 +553,13 @@ for result in read_response:
 last_known_position = read_response.head()
 print("Last known position is:", last_known_position)
 
-# Create an event with a UUID to enable idempotent append
+# Create an event with a UUID to enable idempotent append and metadata
 event = Event(
     event_type="example",
     tags=["tag1", "tag2"],
     data=b"Hello, world!",
     uuid=str(uuid.uuid4()),
+    metadata={"source": "tracking_example", "correlation_id": str(uuid.uuid4())},
 )
 
 # Append event within the consistency boundary
@@ -577,6 +587,7 @@ try:
         tags=["tag1", "tag2"],
         data=b"Hello, world!",
         uuid=str(uuid.uuid4()),  # different UUID
+        metadata={},
     )
     client.append([conflicting_event], condition=None, tracking_info=tracking_info)
 except IntegrityError as e:

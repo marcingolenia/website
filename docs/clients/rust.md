@@ -380,14 +380,22 @@ Returns the last recorded upstream position (`u64`), or `None` if the sequence n
 
 A `DcbEvent` represents a single event either to be appended or already stored in the event log.
 
-| Field        | Type           | Description                                                   |
-|--------------|----------------|---------------------------------------------------------------|
-| `event_type` | `String`       | The event’s logical type (e.g. `"UserRegistered"`).           |
-| `tags`       | `Vec<String>`  | Tags assigned to the event (used for filtering and indexing). |
-| `data`       | `Vec<u8>`      | Binary payload associated with the event.                     |
-| `uuid`       | `Option<Uuid>` | Unique event ID.                                              |
+| Field        | Type                       | Description                                                   |
+|--------------|----------------------------|---------------------------------------------------------------|
+| `event_type` | `String`                   | The event's logical type (e.g. `"UserRegistered"`).           |
+| `tags`       | `Vec<String>`              | Tags assigned to the event (used for filtering and indexing). |
+| `data`       | `Vec<u8>`                  | Binary payload associated with the event.                     |
+| `uuid`       | `Option<Uuid>`             | Unique event ID.                                              |
+| `metadata`   | `HashMap<String, String>`  | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
 
 Idempotent support for append operations is activated by setting a UUID on appended events.
+
+The `metadata` field allows storing arbitrary string key-value pairs alongside events. This is useful for
+storing provenance information, correlation IDs, causation IDs, or other contextual data that should be
+preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
+
+`DcbEvent` provides a builder pattern via `Default` implementation. You can use `.metadata_entry(key, value)`
+to add individual metadata entries, or set the `metadata` field directly with a `HashMap`.
 
 Include in:
 * [Append requests](#appending-events) when writing new events to the store.
@@ -556,13 +564,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let last_known_position = read_response.head().unwrap();
     println!("Last known position is: {:?}", last_known_position);
 
-    // Produce new event
-    let event = DcbEvent {
-        event_type: "example".to_string(),
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-        data: b"Hello, world!".to_vec(),
-        uuid: Some(Uuid::new_v4()),
-    };
+    // Produce new event with metadata (using builder pattern)
+    let event = DcbEvent::default()
+        .event_type("example")
+        .tags(["tag1", "tag2"])
+        .data(b"Hello, world!")
+        .uuid(Uuid::new_v4())
+        .metadata_entry("source", "example")
+        .metadata_entry("correlation_id", Uuid::new_v4().to_string());
 
     // Append event in consistency boundary
     let commit_position1 = client.append(
@@ -576,12 +585,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Appended event at position: {}", commit_position1);
 
     // Append conflicting event - expect an error
-    let conflicting_event = DcbEvent {
-        event_type: "example".to_string(),
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-        data: b"Hello, world!".to_vec(),
-        uuid: Some(Uuid::new_v4()), // different UUID
-    };
+    let conflicting_event = DcbEvent::default()
+        .event_type("example")
+        .tags(["tag1", "tag2"])
+        .data(b"Hello, world!")
+        .uuid(Uuid::new_v4()); // different UUID
     let conflicting_result = client.append(
         vec![conflicting_event],
         Some(DcbAppendCondition {
@@ -729,13 +737,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let last_known_position = read_response.head().await?;
     println!("Last known position is: {:?}", last_known_position);
 
-    // Produce new event
-    let event = DcbEvent {
-        event_type: "example".to_string(),
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-        data: b"Hello, world!".to_vec(),
-        uuid: Some(Uuid::new_v4()),
-    };
+    // Produce new event with metadata (using builder pattern)
+    let event = DcbEvent::default()
+        .event_type("example")
+        .tags(["tag1", "tag2"])
+        .data(b"Hello, world!")
+        .uuid(Uuid::new_v4())
+        .metadata_entry("source", "example")
+        .metadata_entry("correlation_id", Uuid::new_v4().to_string());
 
     // Append event in consistency boundary
     let commit_position1 = client
@@ -751,12 +760,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Appended event at position: {}", commit_position1);
 
     // Append conflicting event - expect an error
-    let conflicting_event = DcbEvent {
-        event_type: "example".to_string(),
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-        data: b"Hello, world!".to_vec(),
-        uuid: Some(Uuid::new_v4()), // different UUID
-    };
+    let conflicting_event = DcbEvent::default()
+        .event_type("example")
+        .tags(["tag1", "tag2"])
+        .data(b"Hello, world!")
+        .uuid(Uuid::new_v4()); // different UUID
     let conflicting_result = client
         .append(
             vec![conflicting_event.clone()],
