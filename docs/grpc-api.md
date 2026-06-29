@@ -178,14 +178,17 @@ An `Event` represents a single event either to be appended or already stored in 
 | `uuid`       | `string`                   | Unique event ID (e.g. serialized version 4 UUIDv4).                          |
 | `metadata`   | `map<string, string>`      | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
 
-Idempotent support for append operations is activated by setting a UUID on appended events. The server
+The `event_type` and each tag in `tags` may be up to 65535 bytes long. Appending an
+event with a longer type or tag fails with a validation error.
+
+Idempotent support for append operations is activated by setting `uuid` on appended events. The server
 does not enforce uniqueness of event IDs.
 
 The `metadata` field allows storing arbitrary string key-value pairs alongside events. This is useful for
 storing provenance information, correlation IDs, causation IDs, or other contextual data that should be
 preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
 Each metadata key and value may be up to 65535 bytes long; appending an event with a longer key or value
-fails with a validation error (`ValueError`).
+fails with a validation error.
 
 Include in:
 * [`AppendRequest`](#append-request) when writing new events to the store.

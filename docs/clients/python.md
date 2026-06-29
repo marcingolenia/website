@@ -345,7 +345,10 @@ An `Event` represents a single event either to be appended or already stored in 
 | `uuid`       | `str\|None`       | Unique event ID.                                              |
 | `metadata`   | `dict[str, str]`  | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
 
-Idempotent support for append operations is activated by setting a UUID on appended events.
+The `event_type` and each tag in `tags` may be up to 65535 bytes long. Appending an
+event with a longer type or tag fails with a validation error.
+
+Idempotent support for append operations is activated by setting `uuid` on appended events.
 
 The `metadata` field allows storing arbitrary string key-value pairs alongside events. This is useful for
 storing provenance information, correlation IDs, causation IDs, or other contextual data that should be
