@@ -242,7 +242,6 @@ fn read(
     start: Option<u64>,
     backwards: bool,
     limit: Option<u32>,
-    subscribe: bool,
 ) -> DcbResult<Box<dyn DcbReadResponseSync + Send + 'static>>
 ```
 == async
@@ -253,16 +252,12 @@ async fn read(
     start: Option<u64>,
     backwards: bool,
     limit: Option<u32>,
-    subscribe: bool,
 ) -> DcbResult<Box<dyn DcbReadResponseAsync + Send + 'static>>
 ```
 :::
 
 The `read()` method can be used both for constructing decision models in a domain layer, and for projecting events into
 materialized views in CQRS. An optional [`DcbQuery`](#query) can be provided to select by tags and types.
-
-Please note, the `subscribe=true` argument is deprecated, this parameter will be removed in a future version:
-use the [`subscribe()`](#subscribing) method instead.
 
 ### Parameters
 
@@ -272,16 +267,13 @@ use the [`subscribe()`](#subscribing) method instead.
 | `start`     | `Option<u64>`      | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `true`.                   |
 | `backwards` | `bool`             | If `true` events will be read backwards, either from the given position or from the last recorded event.                                                                      |
 | `limit`     | `Option<u32>`      | Optional cap on the number of events to retrieve.                                                                                                                             |
-| `subscribe` | `bool`             | If `true` [**deprecated**], keeps the stream open to deliver future events as they arrive.                                                                                    |
 
 
 ### Return Value
 
 Returns a "read response" instance from which [`DcbSequencedEvent`](#sequenced-event) instances, and the most relevant "last known" sequence number, can be obtained. The "last known" sequence number can be obtained by calling the `head()` method on the response object.
 
-If `subscribe` was `true`, the "last known" sequence number returned by the response's `head()` method will be `None`.
-
-Otherwise, if `limit` was a `Some<u32>`, the value returned by the response's `head()` method will be the sequence position
+If `limit` was a `Some<u32>`, the value returned by the response's `head()` method will be the sequence position
 of the last event received from the server.
 
 Otherwise, the value returned by the response's `head()` method will be the position of the last recorded event in the database when the reader transaction started.
@@ -545,7 +537,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Read events for a decision model
-    let mut read_response = client.read(Some(cb.clone()), None, false, None, false)?;
+    let mut read_response = client.read(Some(cb.clone()), None, false, None)?;
 
     // Build decision model
     while let Some(result) = read_response.next() {
@@ -631,7 +623,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Subscribe to all events for a projection
-    let mut subscription = client.read(None, None, false, None, true)?;
+    let mut subscription = client.subscribe(None, None)?;
 
     // Build an up-to-date view
     while let Some(result) = subscription.next() {
@@ -718,9 +710,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Read events for a decision model
-    let mut read_response = client
-        .read(Some(cb.clone()), None, false, None, false)
-        .await?;
+    let mut read_response = client.read(Some(cb.clone()), None, false, None).await?;
 
     // Build decision model
     while let Some(result) = read_response.next().await {
@@ -812,7 +802,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Subscribe to all events for a projection
-    let mut subscription = client.read(None, None, false, None, true).await?;
+    let mut subscription = client.subscribe(None, None).await?;
 
     // Build an up-to-date view
     while let Some(result) = subscription.next().await {

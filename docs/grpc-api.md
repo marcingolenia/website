@@ -72,19 +72,16 @@ Send a `ReadRequest` to the [`Read`](#dcb-service) RPC to read events from the e
 Set `query` to select only specific events. Set `start` to read only from a specific position. If `start` is not set,
 events will be read from the first recorded event, or the last if `backwards` is `true`.
 
-| Field        | Type                                      | Description                                                                          |
-|--------------|-------------------------------------------|--------------------------------------------------------------------------------------|
-| `query`      | **optional**&nbsp;[`Query`](#query)       | Optional filter for selecting specific event types or tags.                          |
-| `start`      | **optional**&nbsp;`uint64`                | Read from this sequence number.                                                      |
-| `backwards`  | **optional**&nbsp;`bool`                  | Start reading backwards (default `false`).                                           |
-| `limit`      | **optional**&nbsp;`uint32`                | Maximum number of events to return (default unlimited).                              |
-| `subscribe`  | [**deprecated**] **optional**&nbsp;`bool` | If true, the stream remains open and continues delivering new events. |
-| `batch_size` | **optional**&nbsp;`uint32`                | Optional batch size hint for streaming responses.                                    |
+| Field        | Type                                      | Description                                                 |
+|--------------|-------------------------------------------|-------------------------------------------------------------|
+| `query`      | **optional**&nbsp;[`Query`](#query)       | Optional filter for selecting specific event types or tags. |
+| `start`      | **optional**&nbsp;`uint64`                | Read from this sequence number.                             |
+| `backwards`  | **optional**&nbsp;`bool`                  | Start reading backwards (default `false`).                  |
+| `limit`      | **optional**&nbsp;`uint32`                | Maximum number of events to return (default unlimited).     |
+| `subscribe`  | [**deprecated**] **optional**&nbsp;`bool` | This field is ignored by the server.                        |
+| `batch_size` | **optional**&nbsp;`uint32`                | Optional batch size hint for streaming responses.           |
 
-The server will return a stream of [`ReadResponse`](#read-response) messages. The default value of `subscribe` is
-`false`, meaning the stream will end when all selected events have been received. When `subscribe` is `true`, the stream
-will continue as new events are appended to the store. Please note, the `subscribe` field is deprecated and will be removed in a
-future version: use the [`Subscribe`](#dcb-service) RPC instead.
+The server will return a stream of [`ReadResponse`](#read-response) messages.
 
 
 ## Read Response
@@ -98,9 +95,7 @@ A collection of [`SequencedEvent`](#sequenced-event) messages can be obtained fr
 | `events` | **repeated**&nbsp;[`SequencedEvent`](#sequenced-event) | A batch of events matching the [`ReadRequest.query`](#read-request). |
 | `head`   | **optional**&nbsp;`uint64`                             | The position of the last recorded event.                             |
 
-If [`ReadRequest.subscribe`](#read-request) was `true`, the value of `head` will be empty.
-
-Otherwise, if [`ReadRequest.limit`](#read-request) was a `uint64`, the value of `head` will be the position
+If [`ReadRequest.limit`](#read-request) was a `uint64`, the value of `head` will be the position
 of the last event in the message's `events` field.
 
 Otherwise, the value of  `head` will be the position of the last recorded event in the database during the reader transaction.

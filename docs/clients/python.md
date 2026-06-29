@@ -203,15 +203,11 @@ def read(
     start: int | None = None,
     backwards: bool = False,
     limit: int | None = None,
-    subscribe: bool = False,
 ) -> ReadResponse:
     ...
 ```
 The `Client.read()` method can be used both for constructing decision models in a domain layer, and for projecting events into
 materialized views in CQRS. An optional `Query` can be provided to select by tags and types.
-
-Please note, the `subscribe=true` argument is deprecated, this parameter will be removed in a future version:
-use the [`subscribe()`](#subscribing) method instead.
 
 
 ### Parameters
@@ -222,19 +218,17 @@ use the [`subscribe()`](#subscribing) method instead.
 | `start`     | `int\|None`   | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `True`. |
 | `backwards` | `bool`        | If `True` events will be read backwards, either from the given position or from the last recorded event.                                                    |
 | `limit`     | `int\|None`   | Optional cap on the number of events to retrieve.                                                                                                           |
-| `subscribe` | `bool`        | If `True` [**deprecated**], keeps the stream open to deliver future events as they arrive.                                                                  |
 
 
 ### Return Value
 
 Returns an iterable "read response" instance from which `SequencedEvent` instances, and the most relevant "last known" sequence number, can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
 
-If `subscribe` was `True`, the "last known" sequence number returned by the response's `head()` method will be `None`.
-
-Otherwise, if `limit` was a `int`, the value returned by the response's `head()` method will be the sequence position
+if `limit` was a `int`, the value returned by the response's `head()` method will be the sequence position
 of the last event received from the server.
 
-Otherwise, the value returned by the response's `head()` method will be the position of the last recorded event in the database when the reader transaction started.
+Otherwise, the value returned by the response's `head()` method will be the position of the last recorded
+event in the database when the reader transaction started.
 
 
 ### Example
@@ -507,14 +501,6 @@ print("Retrying to append event at position:", last_known_position)
 commit_position2 = client.append([event], condition=condition)
 assert commit_position1 == commit_position2
 print("Append returned same commit position:", commit_position2)
-
-# Subscribe to all events for a projection
-subscription = client.read(subscribe=True)
-for ev in subscription:
-    print(f"Processing event at {ev.position}: {ev.event}")
-    if ev.position == commit_position2:
-        print("Projection has processed new event!")
-        break
 ```
 
 ## Example with Tracking
