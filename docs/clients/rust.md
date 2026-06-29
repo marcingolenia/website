@@ -393,6 +393,8 @@ Idempotent support for append operations is activated by setting a UUID on appen
 The `metadata` field allows storing arbitrary string key-value pairs alongside events. This is useful for
 storing provenance information, correlation IDs, causation IDs, or other contextual data that should be
 preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
+Each metadata key and value may be up to 65535 bytes long; appending an event with a longer key or value
+fails with a validation error (`ValueError`).
 
 `DcbEvent` provides a builder pattern via `Default` implementation. You can use `.metadata_entry(key, value)`
 to add individual metadata entries, or set the `metadata` field directly with a `HashMap`.

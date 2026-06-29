@@ -184,6 +184,8 @@ does not enforce uniqueness of event IDs.
 The `metadata` field allows storing arbitrary string key-value pairs alongside events. This is useful for
 storing provenance information, correlation IDs, causation IDs, or other contextual data that should be
 preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
+Each metadata key and value may be up to 65535 bytes long; appending an event with a longer key or value
+fails with a validation error (`ValueError`).
 
 Include in:
 * [`AppendRequest`](#append-request) when writing new events to the store.
