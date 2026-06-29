@@ -217,11 +217,11 @@ Conditional appends with event UUIDs are idempotent. The server does not enforce
 
 ### Parameters
 
-| Name            | Type                         | Description                                                                             |
-|-----------------|------------------------------|-----------------------------------------------------------------------------------------|
-| `events`        | `Vec<DcbEvent>`              | The list of events to append. Each includes an event type, tags, and data payload.      |
-| `condition`     | `Option<DcbAppendCondition>` | Optional [append condition](#append-condition) to ensure no conflicting writes occur.   |
-| `tracking_info` | `Option<TrackingInfo>`       | Optional [tracking information](#tracking-info) – for event-processing components only. |
+| Name            | Type                                         | Description                                                                             |
+|-----------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
+| `events`        | `Vec<`[`DcbEvent`](#event)`>`                | The list of events to append. Each includes an event type, tags, and data payload.      |
+| `condition`     | `Option<`[`DcbAppendCondition`](#append-condition)`>` | Optional [append condition](#append-condition) to ensure no conflicting writes occur.   |
+| `tracking_info` | `Option<`[`TrackingInfo`](#tracking-info)`>` | Optional [tracking information](#tracking-info) – for event-processing components only. |
 
 ### Return Value
 
@@ -261,12 +261,12 @@ materialized views in CQRS. An optional [`DcbQuery`](#query) can be provided to 
 
 ### Parameters
 
-| Name        | Type               | Description                                                                                                                                                                   |
-|-------------|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `query`     | `Option<DcbQuery>` | Optional structured query to filter events (by tags, event types, etc).                                                                                                       |
-| `start`     | `Option<u64>`      | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `true`.                   |
-| `backwards` | `bool`             | If `true` events will be read backwards, either from the given position or from the last recorded event.                                                                      |
-| `limit`     | `Option<u32>`      | Optional cap on the number of events to retrieve.                                                                                                                             |
+| Name        | Type                            | Description                                                                                                                                                                   |
+|-------------|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `query`     | `Option<`[`DcbQuery`](#query)`>` | Optional structured query to filter events (by tags, event types, etc).                                                                                                       |
+| `start`     | `Option<u64>`                   | Read events *from* this sequence number. Only events with positions greater than or equal will be returned (or less than or equal if `backwards` is `true`.                   |
+| `backwards` | `bool`                          | If `true` events will be read backwards, either from the given position or from the last recorded event.                                                                      |
+| `limit`     | `Option<u32>`                   | Optional cap on the number of events to retrieve.                                                                                                                             |
 
 
 ### Return Value
@@ -306,10 +306,10 @@ The `subscribe()` method can be used for projecting events into materialized vie
 
 ### Parameters
 
-| Name        | Type                    | Description                                                                                       |
-|-------------|-------------------------|---------------------------------------------------------------------------------------------------|
-| `query`     | `Option<DcbQuery>`      | Optional structured query to filter events (by tags, event types, etc).                           |
-| `after`     | `Option<u64>`           | Receive events *after* this sequence number. Only events with greater positions will be received. |
+| Name        | Type                            | Description                                                                                       |
+|-------------|---------------------------------|---------------------------------------------------------------------------------------------------|
+| `query`     | `Option<`[`DcbQuery`](#query)`>` | Optional structured query to filter events (by tags, event types, etc).                           |
+| `after`     | `Option<u64>`                   | Receive events *after* this sequence number. Only events with greater positions will be received. |
 
 
 ### Return Value
@@ -368,9 +368,9 @@ atomically](#appending-events) when appending new events generated by processing
 
 ### Parameters
 
-| Name        | Type                         | Description             |
-|-------------|------------------------------|-------------------------|
-| `source`    | `String`                     | Upstream sequence name. |
+| Name     | Type     | Description             |
+|----------|----------|-------------------------|
+| `source` | `String` | Upstream sequence name. |
 
 ### Return Value
 
@@ -412,10 +412,10 @@ Matched by:
 A `DcbAppendCondition` causes an append request to fail if events match its [`DcbQuery`](#query), optionally after
 a sequence number.
 
-| Field                  | Type          | Description                   |
-|------------------------|---------------|-------------------------------|
-| `fail_if_events_match` | `DcbQuery`    | Query for conflicting events. |
-| `after`                | `Option<u64>` | Sequence number.              |
+| Field                  | Type                     | Description                   |
+|------------------------|--------------------------|-------------------------------|
+| `fail_if_events_match` | [`DcbQuery`](#query)     | Query for conflicting events. |
+| `after`                | `Option<u64>`            | Sequence number.              |
 
 Include in:
 * [Append requests](#appending-events) to define optimistic concurrent control.
@@ -450,9 +450,9 @@ semantics from the point of view of consumers of the recorded state.
 
 A `DcbQuery` defines criteria for selecting events in the event store.
 
-| Field   | Type                | Description                                |
-|---------|---------------------|--------------------------------------------|
-| `items` | `Vec<DcbQueryItem>` | A list of selection criteria (logical OR). |
+| Field   | Type                               | Description                                |
+|---------|------------------------------------|------------------------------------------- |
+| `items` | `Vec<`[`DcbQueryItem`](#query-item)`>` | A list of selection criteria (logical OR). |
 
 A [`DcbEvent`](#event) is selected if any [`DcbQueryItem`](#query-item) matches or the `items` field is empty.
 
@@ -479,10 +479,10 @@ A `DcbQueryItem` will match a [`DcbEvent`](#event) if:
 
 A `DcbSequencedEvent` represents a recorded [`DcbEvent`](#event) along with its assigned sequence number.
 
-| Field      | Type       | Description          |
-|------------|------------|----------------------|
-| `position` | `u64`      | The sequence number. |
-| `event`    | `DcbEvent` | The recorded event.  |
+| Field      | Type                  | Description          |
+|------------|-----------------------|----------------------|
+| `position` | `u64`                 | The sequence number. |
+| `event`    | [`DcbEvent`](#event)  | The recorded event.  |
 
 Included in:
 * [Read responses](#reading-events) when the server responds to read requests.
