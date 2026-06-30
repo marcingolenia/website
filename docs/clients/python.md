@@ -337,16 +337,13 @@ Returns the last recorded upstream position (`int`), or `None` if the sequence n
 
 An `Event` represents a single event either to be appended or already stored in the event log.
 
-| Field        | Type              | Description                                                   |
-|--------------|-------------------|---------------------------------------------------------------|
-| `event_type` | `str`             | The event's logical type (e.g. `"UserRegistered"`).           |
-| `tags`       | `list[str]`       | Tags assigned to the event (used for filtering and indexing). |
-| `data`       | `bytes`           | Binary payload associated with the event.                     |
-| `uuid`       | `str\|None`       | Unique event ID.                                              |
-| `metadata`   | `dict[str, str]`  | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
-
-The `event_type` and each tag in `tags` may be up to 65535 bytes long. Appending an
-event with a longer type or tag fails with a validation error.
+| Field        | Type               | Description                                                                  |
+|--------------|--------------------|------------------------------------------------------------------------------|
+| `event_type` | `str`              | The event's logical type (e.g. `"UserRegistered"`).                          |
+| `tags`       | `list[str]`        | Tags assigned to the event (used for filtering and indexing).                |
+| `data`       | `bytes`            | Binary payload associated with the event.                                    |
+| `uuid`       | `str\|None`        | Unique event ID.                                                             |
+| `metadata`   | `dict[str, str]`   | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
 
 Idempotent support for append operations is activated by setting `uuid` on appended events.
 
@@ -354,7 +351,7 @@ The `metadata` field allows storing arbitrary string key-value pairs alongside e
 storing provenance information, correlation IDs, causation IDs, or other contextual data that should be
 preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
 Each metadata key and value may be up to 65535 bytes long; appending an event with a longer key or value
-fails with a validation error (`ValueError`).
+fails with a validation error.
 
 Include in:
 * [Append requests](#appending-events) when writing new events to the store.

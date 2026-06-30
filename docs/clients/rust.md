@@ -380,16 +380,16 @@ Returns the last recorded upstream position (`u64`), or `None` if the sequence n
 
 A `DcbEvent` represents a single event either to be appended or already stored in the event log.
 
-| Field        | Type                       | Description                                                   |
-|--------------|----------------------------|---------------------------------------------------------------|
-| `event_type` | `String`                   | The event's logical type (e.g. `"UserRegistered"`).           |
-| `tags`       | `Vec<String>`              | Tags assigned to the event (used for filtering and indexing). |
-| `data`       | `Vec<u8>`                  | Binary payload associated with the event.                     |
-| `uuid`       | `Option<Uuid>`             | Unique event ID.                                              |
-| `metadata`   | `HashMap<String, String>`  | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
+| Field        | Type                  | Description                                                                  |
+|--------------|-----------------------|------------------------------------------------------------------------------|
+| `event_type` | `String`              | The event's logical type (e.g. `"UserRegistered"`).                          |
+| `tags`       | `Vec<String>`         | Tags assigned to the event (used for filtering and indexing).                |
+| `data`       | `Vec<u8>`             | Binary payload associated with the event.                                    |
+| `uuid`       | `Option<Uuid>`        | Unique event ID.                                                             |
+| `metadata`   | `Vec<String, String>` | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
 
-The `event_type` and each tag in `tags` may be up to 65535 bytes long. Appending an
-event with a longer type or tag fails with a validation error.
+`DcbEvent` provides a builder pattern via `Default` implementation. You can use `.metadata_entry(key, value)`
+to add or update individual metadata entries.
 
 Idempotent support for append operations is activated by setting `uuid` on appended events.
 
@@ -398,9 +398,6 @@ storing provenance information, correlation IDs, causation IDs, or other context
 preserved with the event. Metadata is stored with the event and returned unchanged when the event is read.
 Each metadata key and value may be up to 65535 bytes long; appending an event with a longer key or value
 fails with a validation error.
-
-`DcbEvent` provides a builder pattern via `Default` implementation. You can use `.metadata_entry(key, value)`
-to add individual metadata entries, or set the `metadata` field directly with a `HashMap`.
 
 Include in:
 * [Append requests](#appending-events) when writing new events to the store.
