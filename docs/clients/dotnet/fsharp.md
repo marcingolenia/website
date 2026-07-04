@@ -33,8 +33,8 @@ The client is split into these modules under `UmaDb.Client`:
 | Module            | Use when                                                                                                                                           |
 |-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 | **ClientBuilder** | Building a connection (host, port, TLS, API key) and creating a `UmaClient`.                                                                       |
-| **Operations**    | Reading, appending, and subscribing: `readList`, `readWithOptions`, `append`, `subscribeWithCallback`, etc.                                        |
-| **Query**         | Defining queries and read options: `QueryItem`, `Query`, `QueryOptions` and the `QueryOptions` pipeline (`fromPosition`, `limit`, `subscribe`, …). |
+| **Operations**    | Reading, appending, and subscribing: `readList`, `readWithOptions`, `append`, `subscribe`, `subscribeWithCallback`, etc.                            |
+| **Query**         | Defining queries and read options: `QueryItem`, `Query`, `QueryOptions` and the `QueryOptions` pipeline (`fromPosition`, `limit`, `batchSize`, …).  |
 | **Event**         | Working with event shapes: `UmaEvent`, `SequencedUmaEvent`, `UmaTrackingInfo`.                                                                     |
 | **Errors**        | Handling failures: `UmaDbException` and derived types, `IntegrityError`.                                                                           |
 
@@ -105,7 +105,7 @@ Performance best practices with gRPC from [Microsoft Learn](https://learn.micros
 
 ## Concepts
 
-- **Query** — A filter over the log ([DCB Query](https://dcb.events/specification/)). In F# a query is a list of **QueryItem**s: `{ Types: string list; Tags: string list }`. Each item matches events whose type is in `Types` (or any if empty) **and** whose tags include all of `Tags` (or any if empty). Multiple items are combined with **OR**. Use with `readWithOptions`, `readList`, or `subscribeWithCallback`; pair with **QueryOptions** (position, limit, subscribe, etc.) where needed.
+- **Query** — A filter over the log ([DCB Query](https://dcb.events/specification/)). In F# a query is a list of **QueryItem**s: `{ Types: string list; Tags: string list }`. Each item matches events whose type is in `Types` (or any if empty) **and** whose tags include all of `Tags` (or any if empty). Multiple items are combined with **OR**. Use with `readWithOptions`, `readList`, `subscribe`, or `subscribeWithCallback`; pair with **QueryOptions** (position, limit, batch size, etc.) where needed.
 - **Append condition** — `failIfMatch` + `after`. The append fails if the store contains any event matching the query **after** position `after`. Use the **same query** you used to read and the **head** from that read as `withAfter`; then no one else can have written matching events in between. Built with `failIfMatch` and `withAfter` on an `AppendOperation`.
 - **Tracking** — `track source position` on an `AppendOperation`. Records “I've processed up to this position on this upstream.” Stored atomically with the events. Positions must be strictly increasing per source.
 
@@ -180,16 +180,16 @@ let runProjection (client: UmaClient) (store: IProjectionStore) (ct: Cancellatio
 }
 ```
 
-For a stream you consume yourself, use `readWithOptions` with `QueryOptions.defaults |> QueryOptions.subscribe` and iterate inside a `task { }`:
+For a stream you consume yourself, use `subscribe` (backed by the dedicated Subscribe RPC) and iterate inside a `task { }`:
 
 ```fsharp
 task {
-    for evt in readWithOptions client ct query (QueryOptions.defaults |> QueryOptions.subscribe) do
+    for evt in subscribe client ct query QueryOptions.defaults do
         do! handle evt
 }
 ```
 
-For position/limit/backwards, use the same `readWithOptions` and pipe `QueryOptions.fromPosition`, `QueryOptions.limit`, `QueryOptions.backwards`, etc.
+To resume from a position or tune the batch size, pipe `QueryOptions.fromPosition` / `QueryOptions.batchSize` into the options passed to `subscribe`. For plain reads with position/limit/backwards, use `readWithOptions`.
 
 ### 4. Upstream tracking (exactly-once)
 
@@ -271,7 +271,7 @@ let! posResult2 = append client ct op
 | Function | Purpose |
 |----------|---------|
 | `readList client query` | Returns `Task<SequencedUmaEvent list * int64 option>`. Use for small result sets or building a decision model. For large result sets or cancellation, use `readWithOptions` instead. |
-| `readWithOptions client ct query options` | `TaskSeq<SequencedUmaEvent>`. Stream with full read options (position, limit, batch size, backwards, subscribe). |
+| `readWithOptions client ct query options` | `TaskSeq<SequencedUmaEvent>`. Stream with full read options (position, limit, batch size, backwards). |
 | `readHead client ct` | `Task<int64 option>`. Last position in the log, or `None` if empty. |
 | `readTrackingInfo client ct source` | `Task<int64 option>`. Last tracked position for the upstream source. |
 | `appendOperation (events: UmaEvent list)` | Starts an append operation (no condition). Pipe to `failIfMatch` / `withAfter` / `track` then `append`. |
@@ -279,6 +279,7 @@ let! posResult2 = append client ct op
 | `withAfter (position: int64 option) op` | Sets `after` for the condition. Usually head from read; `None` omits (no events ignored). |
 | `track source position op` | Adds upstream tracking; position stored atomically. Positions must increase per source. |
 | `append client ct op` | Appends atomically. Returns `Task<Result<int64, IntegrityError>>` — `Ok position` or `Error (ErrorMessage _)` when condition fails or tracking not increasing. |
+| `subscribe client ct query options` | `TaskSeq<SequencedUmaEvent>`. Subscription stream (dedicated Subscribe RPC); stays open for new events. Options honour `FromPosition` and `BatchSize`. |
 | `subscribeWithCallback client ct query onEvent` | Subscription; invokes async `onEvent(evt, ct)` for each event (sequential). Returns `IDisposable` — use `use _ = ...` to stop; disposing cancels the subscription and stops delivery. Handle exceptions in `onEvent`. |
 
 ### Event (UmaDb.Client.Event)
@@ -290,7 +291,7 @@ let! posResult2 = append client ct op
 ### Query (UmaDb.Client.Query)
 
 - **Query** — `QueryItem list`. Empty list = match all. Each item: `{ Types: string list; Tags: string list }` (types OR'd, tags AND'd per item; items OR'd).
-- **QueryOptions** — `FromPosition`, `Limit`, `BatchSize`, `Backwards`, `Subscribe`. Build with `QueryOptions.defaults` and pipe `QueryOptions.fromPosition`, `QueryOptions.limit`, `QueryOptions.batchSize`, `QueryOptions.backwards`, `QueryOptions.subscribe` as needed.
+- **QueryOptions** — `FromPosition`, `Limit`, `BatchSize`, `Backwards`. Build with `QueryOptions.defaults` and pipe `QueryOptions.fromPosition`, `QueryOptions.limit`, `QueryOptions.batchSize`, `QueryOptions.backwards` as needed.
 
 ### Operations (UmaDb.Client.Operations) — types
 

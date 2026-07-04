@@ -125,7 +125,7 @@ builder.Services.AddSingleton<UmaClient>(sp =>
 
 ## Concepts
 
-- **Query** — A filter over the log. Built with `UmaQuery.Where(types, tags)` and `.Or(...)`. Each *query item* matches events whose type is in `types` (or any if empty) **and** whose tags include all of `tags` (or any if empty). Multiple items are combined with **OR** (an event matches if any item matches). Use `.WithOptions(...)` to get a <code>UmaQueryWithOptions</code> for read/subscribe APIs that need position, limit, or subscribe.
+- **Query** — A filter over the log. Built with `UmaQuery.Where(types, tags)` and `.Or(...)`. Each *query item* matches events whose type is in `types` (or any if empty) **and** whose tags include all of `tags` (or any if empty). Multiple items are combined with **OR** (an event matches if any item matches). Use `.WithOptions(...)` to get a <code>UmaQueryWithOptions</code> for read/subscribe APIs that need position, limit, or batch size.
 - **Append condition** — `failIfMatch` + `after`. The append fails if the store contains any event matching the query **after** position `after`. Use the **same query** you used to read and the **head** from that read as `after`; then no one else can have written matching events in between.
 - **Tracking** — `UmaTrackingInfo(Source, Position)`. Records “I’ve processed up to this position on this upstream.” Stored atomically with the events you append. Positions must be strictly increasing per source.
 
@@ -205,7 +205,7 @@ public class OrderProjectionService : BackgroundService
 }
 ```
 
-For an async stream of events (e.g. `await foreach`), use `SubscribeAsync(query, ct)`. For full control over the stream (position, limit, etc.), use `ReadAsync` with `query.WithOptions(o => o.Subscribe = true)`.
+For an async stream of events (e.g. `await foreach`), use `SubscribeAsync(query, ct)`. To resume from a position or tune the batch size, use `SubscribeAsync` with `query.WithOptions(o => o.FromPosition = ...)`. Subscriptions use the dedicated Subscribe RPC.
 
 
 ### 4. Upstream tracking (exactly-once)
@@ -278,7 +278,7 @@ var pos2 = await client.AppendAsync([evt], failIfMatch: query, after: after);
 | `AppendAsync(events, failIfMatch?, after?, trackingInfo?, ct)` | Append; returns `AppendResponse.Position`. Throws `IntegrityException` when condition fails. |
 | `ReadListAsync(query \| queryWithOptions, ct)` | Returns `(Events, Head)` tuple. |
 | `ReadAsync(query \| queryWithOptions, ct)` | `IAsyncEnumerable<SequencedUmaEvent>`. Stream of events (batching is internal). |
-| `SubscribeAsync(query, ct)` | `IAsyncEnumerable<SequencedUmaEvent>`. Subscription stream; use `await foreach` to consume. |
+| `SubscribeAsync(query \| queryWithOptions, ct)` | `IAsyncEnumerable<SequencedUmaEvent>`. Subscription stream (dedicated Subscribe RPC); use `await foreach` to consume. Options honour `FromPosition` and `BatchSize`. |
 | `SubscribeWithCallback(query, onEvent, ct)` | Background subscription; invokes `onEvent` for each event; returns `IDisposable`. Handle exceptions in `onEvent`. |
 | `GetHeadAsync(ct)` | Last position or `null`. |
 | `GetTrackingInfoAsync(source, ct)` | Last tracked position for source, or `null`. |
@@ -294,9 +294,9 @@ Fluent options for `Connect`. **WithHost**(`string`), **WithPort**(`int`), **Wit
     - `UmaQuery.Where(types: ["A","B"], tags: ["x"])` — types OR’d, tags AND’d per item.
     - `.Or(types?, tags?)` — add another OR clause.
     - `.WithOptions(o => { ... })` — returns **UmaQueryWithOptions** (query + read options) for `ReadAsync` / `ReadListAsync` / subscribe.
-- **UmaQueryWithOptions** — query plus options (position, limit, batch size, backwards, subscribe). Create via `UmaQuery.WithOptions(...)`.
+- **UmaQueryWithOptions** — query plus options (position, limit, batch size, backwards). Create via `UmaQuery.WithOptions(...)`.
 
-**When to use:** `FromPosition` / `Limit` for resuming or paging; `Subscribe` for live projections; `Backwards` to read from the end.
+**When to use:** `FromPosition` / `Limit` for resuming or paging; `Backwards` to read from the end. For live projections, use `SubscribeAsync` / `SubscribeWithCallback` (options honour `FromPosition` and `BatchSize`).
 
 ### Core types
 
