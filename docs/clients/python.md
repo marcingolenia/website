@@ -224,7 +224,7 @@ materialized views in CQRS. An optional [`Query`](#query) can be provided to sel
 
 ### Return Value
 
-Returns an iterable "read response" instance from which [`SequencedEvent`](#sequenced-event) instances, and the most relevant "last known" sequence number, can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
+Returns an iterable "read response" from which [`SequencedEvent`](#sequenced-event) instances can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
 
 if `limit` was a `int`, the value returned by the response's `head()` method will be the sequence position
 of the last event received from the server.
