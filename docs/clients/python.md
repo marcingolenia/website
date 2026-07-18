@@ -141,7 +141,7 @@ value can be used to wait for downstream event-processing components in a CQRS s
 ### Example
 
 ```python
-import uuid
+from uuid import uuid4
 
 from umadb import AppendCondition, Client, Event, IntegrityError, Query, QueryItem
 
@@ -163,7 +163,7 @@ ev = Event(
     event_type="example",
     tags=["tag1", "tag2"],
     data=b"Hello, world!",
-    uuid=str(uuid.uuid4()),
+    uuid=uuid4(),
     metadata={"source": "example", "correlation_id": str(uuid.uuid4())},
 )
 
@@ -180,7 +180,7 @@ try:
                 event_type="example",
                 tags=["tag1", "tag2"],
                 data=b"Hello, world!",
-                uuid=str(uuid.uuid4()),
+                uuid=uuid4(),
                 metadata={},
             )
         ],
