@@ -141,7 +141,7 @@ value can be used to wait for downstream event-processing components in a CQRS s
 ### Example
 
 ```python
-import uuid
+from uuid import uuid4
 
 from umadb import AppendCondition, Client, Event, IntegrityError, Query, QueryItem
 
@@ -163,7 +163,7 @@ ev = Event(
     event_type="example",
     tags=["tag1", "tag2"],
     data=b"Hello, world!",
-    uuid=str(uuid.uuid4()),
+    uuid=uuid4(),
     metadata={"source": "example", "correlation_id": str(uuid.uuid4())},
 )
 
@@ -180,7 +180,7 @@ try:
                 event_type="example",
                 tags=["tag1", "tag2"],
                 data=b"Hello, world!",
-                uuid=str(uuid.uuid4()),
+                uuid=uuid4(),
                 metadata={},
             )
         ],
@@ -224,7 +224,7 @@ materialized views in CQRS. An optional [`Query`](#query) can be provided to sel
 
 ### Return Value
 
-Returns an iterable "read response" instance from which [`SequencedEvent`](#sequenced-event) instances, and the most relevant "last known" sequence number, can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
+Returns an iterable "read response" from which [`SequencedEvent`](#sequenced-event) instances can be obtained.  The "last known" sequence number can be obtained from the `head()` method on the response object.
 
 if `limit` was a `int`, the value returned by the response's `head()` method will be the sequence position
 of the last event received from the server.
@@ -337,13 +337,13 @@ Returns the last recorded upstream position (`int`), or `None` if the sequence n
 
 An `Event` represents a single event either to be appended or already stored in the event log.
 
-| Field        | Type               | Description                                                                  |
-|--------------|--------------------|------------------------------------------------------------------------------|
-| `event_type` | `str`              | The event's logical type (e.g. `"UserRegistered"`).                          |
-| `tags`       | `list[str]`        | Tags assigned to the event (used for filtering and indexing).                |
-| `data`       | `bytes`            | Binary payload associated with the event.                                    |
-| `uuid`       | `str\|None`        | Unique event ID.                                                             |
-| `metadata`   | `dict[str, str]`   | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
+| Field        | Type             | Description                                                                  |
+|--------------|------------------|------------------------------------------------------------------------------|
+| `event_type` | `str`            | The event's logical type (e.g. `"UserRegistered"`).                          |
+| `tags`       | `list[str]`      | Tags assigned to the event (used for filtering and indexing).                |
+| `data`       | `bytes`          | Binary payload associated with the event.                                    |
+| `uuid`       | `UUID\|None`     | Unique event ID.                                                             |
+| `metadata`   | `dict[str, str]` | Key-value metadata attached to the event (e.g. provenance, correlation IDs). |
 
 Idempotent support for append operations is activated by setting `uuid` on appended events.
 
@@ -459,7 +459,7 @@ Your application should catch these as appropriate.
 ## Complete Example
 
 ```python
-import uuid
+from uuid import uuid4
 
 from umadb import AppendCondition, Client, Event, IntegrityError, Query, QueryItem
 
@@ -485,8 +485,8 @@ event = Event(
     event_type="example",
     tags=["tag1", "tag2"],
     data=b"Hello, world!",
-    uuid=str(uuid.uuid4()),
-    metadata={"source": "example", "correlation_id": str(uuid.uuid4())},
+    uuid=uuid4(),
+    metadata={"source": "example", "correlation_id": str(uuid4())},
 )
 
 # Append event within the consistency boundary
@@ -500,7 +500,7 @@ try:
         event_type="example",
         tags=["tag1", "tag2"],
         data=b"Hello, world!",
-        uuid=str(uuid.uuid4()),  # different UUID
+        uuid=uuid4(),  # different UUID
         metadata={},
     )
     client.append([conflicting_event], condition=condition)
@@ -517,7 +517,7 @@ print("Append returned same commit position:", commit_position2)
 ## Example with Tracking
 
 ```python
-import uuid
+from uuid import uuid4
 
 from umadb import (
     AppendCondition,
@@ -560,8 +560,8 @@ event = Event(
     event_type="example",
     tags=["tag1", "tag2"],
     data=b"Hello, world!",
-    uuid=str(uuid.uuid4()),
-    metadata={"source": "tracking_example", "correlation_id": str(uuid.uuid4())},
+    uuid=uuid4(),
+    metadata={"source": "tracking_example", "correlation_id": str(uuid4())},
 )
 
 # Append event within the consistency boundary
@@ -588,7 +588,7 @@ try:
         event_type="example",
         tags=["tag1", "tag2"],
         data=b"Hello, world!",
-        uuid=str(uuid.uuid4()),  # different UUID
+        uuid=uuid4(),  # different UUID
         metadata={},
     )
     client.append([conflicting_event], condition=None, tracking_info=tracking_info)
