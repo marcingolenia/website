@@ -13,7 +13,9 @@ head:
 
 Pre-built `umadb` binaries are available to [download](https://github.com/umadb-io/umadb/releases) for Linux and macOS.
 
-Alternatively, you can install using [Cargo](https://crates.io/crates/umadb) or run [Docker](./docker) containers.
+The [Python package](./clients/python) also ships the same pre-built Rust binary, installed as a script named `umadb`.
+
+Alternatively, you can run a [Docker](./docker) container, or install using [Cargo](https://crates.io/crates/umadb).
 
 For details on using UmaDB, see the [Command Line Interface](./cli) guide.
 
