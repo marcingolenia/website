@@ -32,5 +32,6 @@ Supported features:
 - Authentication
 - Streaming
 - Transactions
+- Event metadata
 - Async workflows and cancellation
 

@@ -240,6 +240,29 @@ var r2 = await client.AppendAsync([evt], failIfMatch: query, after: after);
 // r1.Position == r2.Position
 ```
 
+### 6. Event metadata
+
+Attach key/value metadata (e.g. correlation id, source) alongside the payload. Set it via the `metadata` parameter and read it back from `Event.Metadata`:
+
+```csharp
+var evt = new UmaEvent(
+    nameof(OrderCreated),
+    JsonSerializer.SerializeToUtf8Bytes(payload),
+    [$"order-{payload.OrderId}"],
+    metadata:
+    [
+        new("correlation-id", correlationId),
+        new("source", "checkout-api"),
+    ]
+);
+await client.AppendAsync([evt]);
+
+var (events, _) = await client.ReadListAsync(query);
+IReadOnlyList<KeyValuePair<string, string>>? meta = events[0].Event.Metadata;
+```
+
+Metadata is an **ordered list** of key/value pairs (`IReadOnlyList<KeyValuePair<string, string>>`), not a dictionary. Order is preserved and **duplicate keys are allowed** — the store does not deduplicate, matching the wire format (`repeated MetadataEntry`). If you want dictionary lookup when reading, convert at the call site (e.g. `meta.ToDictionary(kv => kv.Key, kv => kv.Value)`), but be aware that drops duplicate keys.
+
 
 ## Example: full flow
 
@@ -300,7 +323,7 @@ Fluent options for `Connect`. **WithHost**(`string`), **WithPort**(`int`), **Wit
 
 ### Core types
 
-- **UmaEvent**(`EventType`, `Data` (bytes), `Tags?`, `Id?`) — event to append or read.
+- **UmaEvent**(`EventType`, `Data` (bytes), `Tags?`, `Metadata?`, `Id?`) — event to append or read. `Metadata` is an ordered list of key/value pairs (`IReadOnlyList<KeyValuePair<string, string>>`); order is preserved and duplicate keys are allowed.
 - **SequencedUmaEvent**(`Position`, `Event`) — read result (each item from `ReadAsync`).
 - **UmaTrackingInfo**(`Source`, `Position`) — upstream checkpoint.
 - **AppendResponse** — `Position` (commit position).

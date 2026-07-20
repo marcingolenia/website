@@ -136,6 +136,7 @@ let evt =
     { EventType = "OrderCreated"
       Data = ReadOnlyMemory(JsonSerializer.SerializeToUtf8Bytes(payload))
       Tags = Some [ tag ]
+      Metadata = None
       Id = None }
 
 let! res = appendOperation [ evt ] |> append client CancellationToken.None
@@ -159,7 +160,7 @@ List.iter (fun evt -> apply evt) events  // your logic
 let after = head
 
 // Append with condition: fail if anything matching query was written after `after`
-let newEvt = { EventType = "OrderShipped"; Data = data; Tags = Some [ tag ]; Id = None }
+let newEvt = { EventType = "OrderShipped"; Data = data; Tags = Some [ tag ]; Metadata = None; Id = None }
 let op = appendOperation [ newEvt ] |> failIfMatch query |> withAfter after
 match! append client ct op with
 | Ok pos -> ()  // committed
@@ -212,12 +213,31 @@ let! result = append client ct op
 Set `Id` on `UmaEvent` (e.g. `Some (Guid.NewGuid())`). Retrying the same append returns the same commit position.
 
 ```fsharp
-let evt = { EventType = "OrderCreated"; Data = data; Tags = Some [ tag ]; Id = Some (Guid.NewGuid()) }
+let evt = { EventType = "OrderCreated"; Data = data; Tags = Some [ tag ]; Metadata = None; Id = Some (Guid.NewGuid()) }
 let op = appendOperation [ evt ] |> failIfMatch query |> withAfter after
 let! r1 = append client ct op
 let! r2 = append client ct op
 // r1 = r2 (same Ok position)
 ```
+
+### 6. Event metadata
+
+Attach key/value metadata (e.g. correlation id, source) alongside the payload with the `Metadata` field, and read it back from the returned event:
+
+```fsharp
+let evt =
+    { EventType = "OrderCreated"
+      Data = ReadOnlyMemory(JsonSerializer.SerializeToUtf8Bytes(payload))
+      Tags = Some [ tag ]
+      Metadata = Some [ ("correlation-id", correlationId); ("source", "checkout-api") ]
+      Id = None }
+let! _ = appendOperation [ evt ] |> append client ct
+
+let! events, _ = readList client query
+let meta = events.[0].Event.Metadata  // (string * string) list option
+```
+
+Metadata is an **ordered list** of key/value pairs (`(string * string) list option`), not a `Map`. Order is preserved and **duplicate keys are allowed** — the store does not deduplicate, matching the wire format (`repeated MetadataEntry`). If you prefer `Map` ergonomics when writing, build one and pipe `Map.toList` into the field; avoid `Map.ofList` when reading, as it silently drops duplicate keys.
 
 ---
 
@@ -244,7 +264,7 @@ List.iter apply events
 let after = head
 
 // Append with condition
-let evt = { EventType = "OrderShipped"; Data = data; Tags = Some [ tag ]; Id = Some (Guid.NewGuid()) }
+let evt = { EventType = "OrderShipped"; Data = data; Tags = Some [ tag ]; Metadata = None; Id = Some (Guid.NewGuid()) }
 let op = appendOperation [ evt ] |> failIfMatch query |> withAfter after
 let! posResult = append client ct op
 // Concurrent write: same condition + after would give Error → reload and retry.
@@ -284,7 +304,7 @@ let! posResult2 = append client ct op
 
 ### Event (UmaDb.Client.Event)
 
-- **UmaEvent** — `EventType`, `Data` (ReadOnlyMemory&lt;byte&gt;), `Tags` (string list option), `Id` (Guid option).
+- **UmaEvent** — `EventType`, `Data` (ReadOnlyMemory&lt;byte&gt;), `Tags` (string list option), `Metadata` (`(string * string) list option`), `Id` (Guid option). Metadata is an ordered list; order is preserved and duplicate keys are allowed.
 - **SequencedUmaEvent** — `Position: int64`, `Event: UmaEvent`.
 - **UmaTrackingInfo** — `Source: string`, `Position: int64`.
 
